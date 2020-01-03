@@ -1,3 +1,29 @@
+/*
+IDEAS
+
+- balloon
+- tool
+- hat
+- wand
+    - sky
+    - ambient
+    - random colors
+- broadcast
+- jail
+- snowman
+- creeper
+- zombie
+- cyclops
+    - size and face
+- weed
+- basil
+    - random outfit
+
+- 
+
+*/
+
+
 const admins = [1]
 const banned = []
 
@@ -118,12 +144,12 @@ const commands = {
     speed: (player,args) => {
         const a = args.split(" ")
         const victim = findPlayer(a[0])
-        return (victim) ? victim.setSpeed(Number(a[1])) : player.setSpeed(Number(a[1]))
+        return (victim) ? victim.setSpeed(Number(a[1])) : player.setSpeed(Number(a[0]))
     },
     jump: (player,args) => {
         const a = args.split(" ")
         const victim = findPlayer(a[0])
-        return (victim) ? victim.setJumpPower(Number(a[1])) : player.setJumpPower(Number(a[1]))
+        return (victim) ? victim.setJumpPower(Number(a[1])) : player.setJumpPower(Number(a[0]))
     }
 }
 
