@@ -45,7 +45,7 @@ function V2(message) {
 }
 
 function loadCommands(cmd,cb) {
-    return Game.command(cmd, isAdmin, (player, args) => {
+    return Game.commands(cmd, isAdmin, (player, args) => {
         cb(player, args)
     })
 }
@@ -61,18 +61,6 @@ Game.on("playerJoin", player => {
     })
 })
 
-
-
-// Game.command("kill", isAdmin, (player, args) => {
-//     const victim = findPlayer(args)
-//     if (!victim)
-//         return
-//     return victim.kill()
-// })
-
-// Game.command("kick", isAdmin, (player, args) => {
-
-// })
 
 const commands = {
     kill: ($, args) => {
@@ -150,10 +138,89 @@ const commands = {
         const a = args.split(" ")
         const victim = findPlayer(a[0])
         return (victim) ? victim.setJumpPower(Number(a[1])) : player.setJumpPower(Number(a[0]))
+    },
+    [["size","scale"]]: (player,args) => {
+        const message = args.split(" ")
+        const victim = findPlayer(message[0])
+        const scale = message[1].split(",")
+        if (victim) {
+            if (scale.length < 3)
+                return victim.setScale(new Vector3(
+                    scale[0],
+                    scale[0],
+                    scale[0]
+                ))
+            return victim.setScale(new Vector3(
+                scale[0],
+                scale[1],
+                scale[2]
+            ))
+        }
+        if (scale.length < 3)
+                return player.setScale(new Vector3(
+                    scale[0],
+                    scale[0],
+                    scale[0]
+                ))
+            return player.setScale(new Vector3(
+                scale[0],
+                scale[1],
+                scale[2]
+            ))
+    },
+    weather: ($,args) => {
+        Game.setEnvironment({
+            weather: args
+        })
+    },
+    freeze: (player,args) => {
+        const victim = findPlayer(args)
+        if (!victim)
+            return
+        new Outfit(victim)
+            .body("#0091ff")
+            .set()
+        victim.frozen = true
+        victim.setSpeed(0)
+        victim.setJumpPower(0)
+        return victim.message(V2(`You were frozen by ${player.username}.`))
+    },
+    thaw: async (player,args) => {
+        const victim = findPlayer(args)
+        if (!victim || !victim.frozen)
+            return
+        await victim.setAvatar(victim.userId)
+        victim.setSpeed(4)
+        victim.setJumpPower(5)
+        return victim.message(V2(`You were thawed by ${player.username}.`))
+    },
+    [["av","avatar"]]: async (player,args) => {
+        const message = args.split(" ")
+
+        switch (message){
+            case findPlayer(message[0]), isNaN(Number(message[1])): // if there is a player and no id after
+                return await player.setAvatar(findPlayer(message[0].userId)) // set the player to the victim
+
+            case findPlayer(message[0]), !isNaN(Number(message[1])): // if there is a player and an id after
+                return await findPlayer(message[0]).setAvatar(Number(message[1])) // set the victim's id to said id
+
+            case !isNaN(Number(message[0])), !findPlayer(message[0]): // if there is an id and it's not a player
+                return await player.setAvatar(Number(message[0])) // set the player to said id
+            
+            case findPlayer(message[0]), findPlayer(message[1]): // if there is 2 players
+                return await findPlayer(message[0]).setAvatar(findPlayer(message[1])) // set the first player to the second player
+
+            case message[0].toLowerCase() === "reset", !findPlayer(message[1]): // if args = reset and no player
+                return await player.setAvatar(player.userId) // reset player
+            
+            case message[0].toLowerCase() === "reset", findPlayer(message[1]): // if reset and player
+                const victim = findPlayer(message[1])
+                return await victim.setAvatar(victim.userId)
+        }   
     }
 }
 
 
 for (let cmds of Object.keys(commands)) {
-    loadCommands(cmds,commands[cmds])
+    loadCommands(cmds.split(","),commands[cmds])
 }
