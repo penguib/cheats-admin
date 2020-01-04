@@ -464,6 +464,12 @@ const commands = {
         if (!victim)
             return newWand(player)
         return newWand(victim)
+    },
+    greset: ($,$) => {
+        Game.setEnvironment({
+            ambient: 0,
+            skyColor: "#007dd1"
+        })
     }
 }
 

@@ -38,3 +38,10 @@ List of commands:
 - /basil ?player: gives you basil and outfit.
 - /creeper ?player: turns you or the player into a creeper.
 - /jail player: puts the player in jail.
+- /free player: frees the player if they are in jail.
+- /broadcast|b message: broadcasts your message throughout the server at the top of the screen.
+- /hat ?player id: gives you or the player a hat with a specified id.
+- /reset ?player: resets everything about you or the player.
+- /tool ?player id: gives you or the player a tool with a specified id.
+- /wand ?player: gives you or the player a magic wand.
+- /greset: resets the game's sky color and ambient
