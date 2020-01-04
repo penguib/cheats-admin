@@ -44,4 +44,4 @@ List of commands:
 - /reset ?player: resets everything about you or the player.
 - /tool ?player id: gives you or the player a tool with a specified id.
 - /wand ?player: gives you or the player a magic wand.
-- /greset: resets the game's sky color and ambient
+- /greset: resets the game's sky color and ambient.
