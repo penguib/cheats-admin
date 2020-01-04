@@ -1,5 +1,7 @@
 # Cheats' V2 Commands
 
+## *Not finished yet*
+
 This is an admin script which will only work with Node-Hill.
 
 How to use:
