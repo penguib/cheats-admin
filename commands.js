@@ -1,22 +1,4 @@
-/*
-IDEAS
-
-- balloon
-- tool
-- hat
-- wand
-    - sky
-    - ambient
-    - random colors
-- broadcast
-- jail
-- creeper
-
-- 
-
-*/
-
-const admins = [127118]
+const admins = [1,127118]
 const banned = []
 const jailBricks = {}
 
@@ -53,6 +35,21 @@ function newBalloon(player) {
         p.setJumpPower(5)
     })
     player.equipTool(balloon)
+}
+
+function newWand(player) {
+    const wand = new Tool("wand")
+    wand.model = 7109
+    wand.equipped(p => {
+        p.message(`[#009ac4][Wand]: [#ffffff]This wand has magic powers when activated...`)
+    })
+    wand.on("activated", $ => {
+        Game.setEnvironment({
+            skyColor: String(Math.random() * 99999999),
+            ambient: String(Math.random() * 99999999)
+        })
+    })
+    player.equipTool(wand)
 }
 
 function cyclops(player) {
@@ -121,13 +118,23 @@ function creeper(player) {
         .set()
 }
 
+async function reset(player) {
+    await player.setAvatar(player.userId)
+    player.setScale(new Vector3(
+        1,
+        1,
+        1
+    ))
+    player.setSpeed(4)
+    player.setJumpPower(5)
+}
+
 function bar(player,x,y,z=0) {
     const brick = new Brick(new Vector3(
         player.position.x - x,
         player.position.y - y,
         player.position.z - z
     ), new Vector3(0.5,0.5,7))
-    Game.newBrick(brick)
     return jailBricks[player.userId].push(brick)
 }
 
@@ -137,7 +144,6 @@ function bases(player,x,y,z=0) {
         player.position.y - y,
         player.position.z - z
     ), new Vector3(5,5,0.5))
-    Game.newBrick(base)
     return jailBricks[player.userId].push(base)
 }
 
@@ -163,6 +169,10 @@ function jail(player) {
 
     bar(player,-2,middleOffset)
     bar(player,middleOffset,-2)
+
+    for (let players of Game.players) {
+        players.loadBricks(jailBricks[player.userId])
+    }
 }
 
 function free(player) {
@@ -185,6 +195,12 @@ Game.on("playerJoin", player => {
         if (admins.includes(player.userId))
             player.centerPrint(V2("You are an admin!"), 3)
     })
+})
+
+Game.on("playerLeave", player => {
+    if (jailBricks[player.userId]) {
+        return free(player)
+    }
 })
 
 
@@ -211,10 +227,12 @@ const commands = {
         (victim.muted) ? player.message(V2(`You unmuted ${victim.username}.`)) : player.message(V2(`You muted ${victim.username}`))
         return victim.muted = !victim.muted
     },
-    vchat: ($,args) => {
-        for (let userId of admins) {
-            const admin = Game.players.find(a => a.userId === userId)
-            admin.message(`[#ff0000][${admin.username}]: [#ffffff]${args}`)
+    vchat: (player,args) => {
+        for (let id of admins) {
+            const admin = Game.players.find(a => a.userId === id)
+            if (!admin)
+                continue
+            admin.message(`[#ff0000][${player.username}]: [#ffffff]${args}`)
         }
     },
     ban: (player,args) => {
@@ -231,29 +249,26 @@ const commands = {
             return
         if (admins.includes(victim.userId)) {
             admins.splice(admins.indexOf(victim.userId), 1)
+            victim.message(V2(`Your admin was taken away by [#ff0000]${player.username}[#ffffff].`))
             return player.message(V2(`You took away [#ff0000]${victim.username}[#ffffff]'s admin.`))
         }
         admins.push(victim.userId)
-        victim.message(V2("You are now an admin."))
+        victim.message(V2(`You were given admin by [#ff0000]${player.username}[#ffffff].`))
         return player.message(V2(`You gave[#ff0000] ${victim.username} [#ffffff]admin.`))
     },
     tp: (player,args) => {
-        if (args.indexOf(",") > -1) {
+        const victim = findPlayer(args)
+        if (!victim) {
             const coords = args.split(",")
-            if (coords[0],coords[1],coords[2])
+            if (coords[0],coords[1],coords[2]) {
                 return player.setPosition(new Vector3(
                     Number(coords[0]),
                     Number(coords[1]),
                     Number(coords[2])
                 ))
-        
-            else {
-                const victim = findPlayer(args)
-                if (!victim)
-                    return
-                return player.setPosition(victim.setPosition)
-            }    
+            }
         }
+        return player.setPosition(victim.position)           
     },
     speed: (player,args) => {
         const a = args.split(" ")
@@ -296,9 +311,11 @@ const commands = {
             ))
     },
     weather: ($,args) => {
-        Game.setEnvironment({
-            weather: args
-        })
+        try {
+            return Game.setEnvironment({
+                weather: args
+            })
+        } catch{}
     },
     freeze: (player,args) => {
         const victim = findPlayer(args)
@@ -331,7 +348,7 @@ const commands = {
         const victim = findPlayer(args)
         if (!victim)
             return
-        return victim.setPosition(player.setPosition)
+        return victim.setPosition(player.position)
     },
     ambient: ($,args) => {
         try {
@@ -377,11 +394,16 @@ const commands = {
             return creeper(player)
         return creeper(victim)
     },
+    snowman: (player,args) => {
+        const victim = findPlayer(args)
+        if (!victim)
+            return snowman(player)
+        return snowman(victim)
+    },
     jail: (player,args) => {
         const victim = findPlayer(args)
         if (!victim)
             return
-        console.log(!!jailBricks[victim.userId])
         if (jailBricks[victim.userId])
             return player.message(V2(`${victim.username} is already jailed!`))
         player.message(V2(`You jailed ${victim.username}.`))
@@ -395,6 +417,53 @@ const commands = {
             return player.message(V2(`${victim.username} is already freed!`))
         player.message(V2(`You freed ${victim.username}.`))
         return free(victim)
+    },
+    [["broadcast","b"]]: (player,args) => {
+        return Game.topPrintAll(`[#ff0000]${player.username}: [#ffffff]${args}`, 5)
+    },
+    hat: (player,args) => {
+        const message = args.split(" ")
+        const victim = findPlayer(message[0])
+        if (!victim) {
+            if (isNaN(Number(args)))
+                return
+            return new Outfit(player)
+                .hat1(Number(args))
+                .set()
+        }
+        if (isNaN(Number(message[1])))
+            return
+        return new Outfit(victim)
+            .hat1(Number(message[1]))
+            .set()
+    },
+    reset: (player,args) => {
+        const victim = findPlayer(args)
+        if (!victim)
+            return reset(player)
+        return reset(victim)
+    },
+    tool: (player,args) => {
+        const message = args.split(" ")
+        const victim = findPlayer(message[0])
+        if (!victim) {
+            if (isNaN(Number(args)))
+                return
+            const newTool = new Tool("Tool")
+            newTool.model = Number(args)
+            return player.equipTool(newTool)
+        }
+        if (isNaN(Number(message[1])))
+            return
+        const newTool = new Tool("Tool")
+        newTool.model = Number(message[1])
+        return victim.equipTool(newTool)
+    },
+    wand: (player,args) => {
+        const victim = findPlayer(args)
+        if (!victim)
+            return newWand(player)
+        return newWand(victim)
     }
 }
 
