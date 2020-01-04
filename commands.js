@@ -468,7 +468,7 @@ const commands = {
     greset: () => {
         Game.setEnvironment({
             ambient: "0",
-            skyColor: "#007dd1"
+            skyColor: "#71b1e6"
         })
     }
 }
