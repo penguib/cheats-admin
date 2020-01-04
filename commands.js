@@ -43,7 +43,7 @@ function newWand(player) {
     wand.equipped(p => {
         p.message(`[#009ac4][Wand]: [#ffffff]This wand has magic powers when activated...`)
     })
-    wand.on("activated", $ => {
+    wand.on("activated", _ => {
         Game.setEnvironment({
             skyColor: String(Math.random() * 99999999),
             ambient: String(Math.random() * 99999999)
@@ -205,13 +205,13 @@ Game.on("playerLeave", player => {
 
 
 const commands = {
-    kill: ($, args) => {
+    kill: (_, args) => {
         const victim = findPlayer(args)
         if (!victim)
             return
         return victim.kill()
     },
-    kick: ($,args) => {
+    kick: (_,args) => {
         const a = args.split(" ")
         const victim = findPlayer(String(a.splice(0,1)))
         if (!victim)
@@ -310,7 +310,7 @@ const commands = {
                 scale[2]
             ))
     },
-    weather: ($,args) => {
+    weather: (_,args) => {
         try {
             return Game.setEnvironment({
                 weather: args
@@ -350,14 +350,14 @@ const commands = {
             return
         return victim.setPosition(player.position)
     },
-    ambient: ($,args) => {
+    ambient: (_,args) => {
         try {
             return Game.setEnvironment({
                 ambient: args
             })
         } catch {}
     },
-    sky: ($,args) => {
+    sky: (_,args) => {
         try {
             return Game.setEnvironment({
                 skyColor: args
@@ -465,13 +465,15 @@ const commands = {
             return newWand(player)
         return newWand(victim)
     },
-    greset: ($,$) => {
+    greset: () => {
         Game.setEnvironment({
-            ambient: 0,
+            ambient: "0",
             skyColor: "#007dd1"
         })
     }
 }
+
+Game.setMaxListeners(100)
 
 for (let cmds of Object.keys(commands)) {
     loadCommands(cmds.split(","),commands[cmds])
