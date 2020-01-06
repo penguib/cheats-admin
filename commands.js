@@ -6,12 +6,32 @@ function isAdmin(player) {
     return admins.includes(player.userId)
 }
 
-function findPlayer(sub) {
-    for (let player of Game.players) {
-        if (player.username.toLowerCase().indexOf(String(sub).toLowerCase()) === 0) {
-            const victim = Game.players.find(v => v.username === player.username)
-            return victim
+function getPlayersFromCommand(caller, args) {
+    switch (args) {
+        case "me": {
+            return [ caller ]
         }
+        case "all": {
+            return Game.players
+        }
+        case "others": {
+            let others = []
+            for (let player of Game.players) {
+                if (player !== caller)
+                    others.push(player)
+            }
+            return others
+        }
+        default: {
+            args = args.toLowerCase()
+            for (let player of Game.players) {
+                if (player.username.toLowerCase().indexOf(args) === 0) {
+                    const victim = Game.players.find(v => v.username === player.username)
+                    return [ victim ]
+                }
+            }
+        }
+        return []
     }
 }
 
@@ -53,7 +73,7 @@ function newWand(player) {
 }
 
 function cyclops(player) {
-    player.setScale(new Vector3(2,2,2))
+    player.setScale(new Vector3(2, 2, 2))
     new Outfit(player)
         .face(34345)
         .body("#0091ff")
@@ -129,46 +149,54 @@ async function reset(player) {
     player.setJumpPower(5)
 }
 
-function bar(player,x,y,z=0) {
-    const brick = new Brick(new Vector3(
-        player.position.x - x,
-        player.position.y - y,
-        player.position.z - z
-    ), new Vector3(0.5,0.5,7))
-    return jailBricks[player.userId].push(brick)
-}
+class Jail {
+    constructor(player) {
+        this.player = player
+    }
 
-function bases(player,x,y,z=0) {
-    const base = new Brick(new Vector3(
-        player.position.x - x,
-        player.position.y - y,
-        player.position.z - z
-    ), new Vector3(5,5,0.5))
-    return jailBricks[player.userId].push(base)
+    bar(x, y, z = 0) {
+        jailBricks[this.player.userId].push(new Brick(new Vector3(
+            this.player.position.x - x,
+            this.player.position.y - y,
+            this.player.position.z - z
+        ), new Vector3(0.5,0.5,7)))
+    }
+    
+    bases(x, y, z = 0) {
+        jailBricks[this.player.userId].push(new Brick(new Vector3(
+            this.player.position.x - x,
+            this.player.position.y - y,
+            this.player.position.z - z
+        ), new Vector3(5, 5, 0.5)))
+    }
 }
 
 function jail(player) {
     const middleOffset = 0.2
     const endOffset = 2.5
     const topOffset = 7
+    
     player.setSpeed(0)
     player.setJumpPower(0)
+
     jailBricks[player.userId] = []
 
-    bases(player,endOffset,endOffset)
-    bases(player,endOffset,endOffset,-topOffset)
+    let cage = new Jail(player)
 
-    bar(player,endOffset,endOffset)
-    bar(player,-2,-2)
+    cage.bases(endOffset, endOffset)
+    cage.bases(endOffset, endOffset, -topOffset)
 
-    bar(player,-2,endOffset)
-    bar(player,endOffset,-2)
+    cage.bar(endOffset, endOffset)
+    cage.bar(-2, -2)
 
-    bar(player,endOffset,middleOffset)
-    bar(player,middleOffset,endOffset)
+    cage.bar(-2, endOffset)
+    cage.bar(endOffset, -2)
 
-    bar(player,-2,middleOffset)
-    bar(player,middleOffset,-2)
+    cage.bar(endOffset, middleOffset)
+    cage.bar(middleOffset, endOffset)
+
+    cage.bar(-2, middleOffset)
+    cage.bar(middleOffset, -2)
 
     for (let players of Game.players) {
         players.loadBricks(jailBricks[player.userId])
@@ -203,39 +231,40 @@ Game.on("playerLeave", player => {
     }
 })
 
-
 const commands = {
-    kill: (_, args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return
-        return victim.kill()
+    kill: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach((victim) => {
+            victim.kill()
+        })
     },
-    kick: (_,args) => {
-        const a = args.split(" ")
-        const victim = findPlayer(String(a.splice(0,1)))
-        if (!victim)
-            return
-        if (!a.length)
-            return victim.kick()
-        return victim.kick(a.join(" "))
+    kick: (caller, args) => {
+        const regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/
+        let match = args.match(regexMatch)
+
+        if (!match) return
+
+        let user = match[1] && match[1].trim()
+        let reason = match[2]
+
+        getPlayersFromCommand(caller, user).forEach((victim) => {
+            victim.kick(reason)
+        })
     },
-    mute: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return
-        (victim.muted) ? player.message(V2(`You unmuted ${victim.username}.`)) : player.message(V2(`You muted ${victim.username}`))
-        return victim.muted = !victim.muted
+    mute: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach((victim) => {
+            (victim.muted) ? caller.message(V2(`You unmuted ${victim.username}.`)) : caller.message(V2(`You muted ${victim.username}`))
+            victim.muted = !victim.muted
+        })
     },
-    vchat: (player,args) => {
+    vchat: (caller, args) => {
         for (let id of admins) {
             const admin = Game.players.find(a => a.userId === id)
             if (!admin)
                 continue
-            admin.message(`[#ff0000][${player.username}]: [#ffffff]${args}`)
+            admin.message(`[#ff0000][${caller.username}]: [#ffffff]${args}`)
         }
     },
-    ban: (player,args) => {
+    ban: (player, args) => {
         const victim = findPlayer(args)
         if (!victim)
             return
@@ -256,7 +285,7 @@ const commands = {
         victim.message(V2(`You were given admin by [#ff0000]${player.username}[#ffffff].`))
         return player.message(V2(`You gave[#ff0000] ${victim.username} [#ffffff]admin.`))
     },
-    tp: (player,args) => {
+    tp: (caller, args) => {
         const victim = findPlayer(args)
         if (!victim) {
             const coords = args.split(",")
