@@ -7,6 +7,80 @@ function isAdmin(player) {
     return admins.includes(player.userId)
 }
 
+function btools(player) {
+    let brickSize = 5
+
+    let create = new Tool("Create")
+    create.on("activated", p => {
+        let brick = new Brick(new Vector3(
+            p.position.x + brickSize,
+            p.position.y - brickSize,
+            0), new Vector3(
+                brickSize,
+                brickSize,
+                brickSize), "#ff0000")
+        brick.name = "btools"
+
+        for (let players of Game.players) {
+            players.loadBricks(brick)
+        }
+    })
+    
+    let destroy = new Tool("Destroy")
+    destroy.on("activated", p => {
+        for (let bricks of world.bricks) {
+            if (Game.pointDistance3D(p.position, bricks.position) <= 10 && bricks.name === "btools") {
+                return bricks.destroy()
+            }
+        }
+    })
+
+    let sizeInc = new Tool("Size+")
+    sizeInc.on("activated", p => {
+        if (brickSize >= 10) {
+            brickSize = 10
+            return p.message(`[#00ff00][Size]: [#ffffff]You increased the brick size to ${brickSize}.`)
+        }
+        brickSize++
+        p.message(`[#00ff00][Size]: [#ffffff]You increased the brick size to ${brickSize}.`)
+    })
+
+    let sizeDec = new Tool("Size-")
+    sizeDec.on("activated", p => {
+        if (brickSize <= 1) {
+            brickSize = 1
+            return p.message(`[#ff0000][Size]: [#ffffff]You decreased the brick size to ${brickSize}.`)
+        }
+            brickSize--
+            p.message(`[#ff0000][Size]: [#ffffff]You decreased the brick size to ${brickSize}.`)
+    })
+    
+    player.addTool(create)
+    player.addTool(destroy)
+    player.addTool(sizeInc)
+    player.addTool(sizeDec)
+}
+
+function heal(player,amt) {
+    amt = Number(amt)
+    let health = (amt + player.health >= player.maxHealth) ? player.maxHealth : amt + player.health
+    player.setHealth(health)
+}
+
+function damage(player,amt) {
+    player.setHealth(player.health - Number(amt))
+}
+
+function loopkill(player) {
+    player.loopkill = !player.loopkill
+
+    let loop = setInterval(() => {
+        if (!player.loopkill) return clearInterval(loop)
+        if (player.alive) 
+            player.kill()
+    }, 100);
+}
+
 function parseCommand(caller, args) {
     let match = args.split(" ")
 
@@ -37,6 +111,19 @@ function getPlayersFromCommand(caller, args) {
             }
             return others
         }
+        case ":random": {
+            let randomIndex = Math.floor( Math.random() * Game.players.length )
+            return [ Game.players[ randomIndex ] ]
+        }
+        case ":admins": {
+            let _admins = []
+            for (let ids of admins) {
+                let user = Game.players.find(v => v.userId === ids)
+                if (!user) continue
+                _admins.push(user)
+            }
+            return _admins
+        }
         default: {
             args = args.toLowerCase()
             for (let player of Game.players) {
@@ -55,8 +142,8 @@ function V2(message) {
 }
 
 function loadCommands(cmd,cb) {
-    return Game.commands(cmd, isAdmin, (player, args) => {
-        cb(player, args)
+    return Game.commands(cmd, isAdmin, (caller, args) => {
+        cb(caller, args)
     })
 }
 
@@ -196,12 +283,41 @@ class Jail {
     }
 }
 
-function jail(player) {
+function playerStats(player) {
+    return {
+        "speed":player.speed,
+        "jump":player.jumpPower,
+    }
+}
+
+async function smite(player) {
+    let endOffset = 0.5
+    let speed = playerStats(player).speed
+
+    let lightning = new Brick(new Vector3(
+        player.position.x - endOffset,
+        player.position.y - endOffset,
+        0
+    ), new Vector3(1, 1, 1000), "#e3f542")
+
+    lightning.setCollision( false )
+
+    await player.setSpeed(0)
+    player.setHealth(player.health - 50)
+    Game.newBrick(lightning)
+
+    await sleep(500)
+
+    lightning.destroy()
+    player.setSpeed(speed)
+}
+
+async function jail(player) {
     const middleOffset = 0.2
     const endOffset = 2.5
     const topOffset = 7
     
-    player.setSpeed(0)
+    await player.setSpeed(0)
     player.setJumpPower(0)
 
     jailBricks[player.userId] = []
@@ -242,6 +358,7 @@ function free(player) {
 Game.on("playerJoin", player => {
     player.on("initialSpawn", () => {
         player.frozen = false
+        player.loopKill = false
 
         if (banned.includes(player.userId)) 
             return player.kick("You are banned from this server!")
@@ -307,10 +424,10 @@ const commands = {
             if (admins.includes( victim.userId )) {
                 victim.message( V2( `Your admin was taken away by [#ff0000]${caller.username}[#ffffff].` ) )
                 caller.message( V2( `You took away [#ff0000]${victim.username}[#ffffff]'s admin.` ) )
-                return admins.splice(admin.indexOf( victim.userId ))
+                return admins.splice(admins.indexOf( victim.userId ))
             }
 
-            victim.message( V2( `You were given admin by [#ff0000]${player.username}[#ffffff].` ) )
+            victim.message( V2( `You were given admin by [#ff0000]${caller.username}[#ffffff].` ) )
             caller.message( V2( `You gave[#ff0000] ${victim.username} [#ffffff]admin.` ) )
             return admins.push( victim.userId )
         })
@@ -337,30 +454,42 @@ const commands = {
         })
     },
     speed: (caller, args) => {
-        let parsed = parseCommand(caller, args)
+        let match = parseCommand(caller, args)
         
-        let user = parsed[0]
-        let speed = Number(parsed[1])
+        if (!match) return
+
+        let user = match[0]
+        let speed = Number(match[1])
 
         getPlayersFromCommand(caller, user).forEach(victim => {
             victim.setSpeed(speed)
         })
     },
     jump: (caller, args) => {
-        let parsed = parseCommand(caller, args)
+        let match = parseCommand(caller, args)
         
-        let user = parsed[0]
-        let jumpPower = Number(parsed[1])
+        if (!match) return
+        
+        let user = match[0]
+        let jumpPower = Number(match[1])
 
         getPlayersFromCommand(caller, user).forEach(victim => {
             victim.setJumpPower(jumpPower)
         })
     },
     [["size","scale"]]: (caller, args) => {
-        let parsed = parseCommand(caller, args)
+        let match = parseCommand(caller, args)
 
-        let user = parsed[0]
-        let scale = parsed[1].splice(",")
+        if (!match) return
+
+        let user = match[0]
+        let scale = match[1].split(",")
+
+        if (scale.length === 2 || scale.length > 3) return
+
+        for (let num of scale) {
+            if (isNaN( num )) return
+        }
 
         let parsedScale = (scale.length === 1) ? new Vector3(
             Number( scale[0] ),
@@ -378,7 +507,7 @@ const commands = {
     },
     weather: (_, args) => {
         try {
-            return Game.setEnvironment({
+            Game.setEnvironment({
                 weather: args
             })
         } catch{}
@@ -388,147 +517,254 @@ const commands = {
             freeze(caller, victim)
         })
     },
-    thaw: async (player,args) => {
-        getPlayersFromCommand(caller, args).forEach(victim => { // thaw as function?
-            if (!victim.frozen) continue
-
+    thaw: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(async victim => { // thaw as function?
+            if (!victim.frozen) return
             await victim.setAvatar(victim.userId)
             victim.setSpeed(4)
             victim.setJumpPower(5)
             victim.message(V2( `You were thawed by ${caller.username}.` ))
         })
     },
-    balloon: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return newBalloon(player)
-        return newBalloon(victim)
+    balloon: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            newBalloon(victim)
+        })
     },
-    tpme: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return
-        return victim.setPosition(player.position)
-    },
-    ambient: (_,args) => {
+    ambient: (_, args) => {
         try {
-            return Game.setEnvironment({
+            Game.setEnvironment({
                 ambient: args
             })
         } catch {}
     },
-    sky: (_,args) => {
+    sky: (_, args) => {
         try {
-            return Game.setEnvironment({
+            Game.setEnvironment({
                 skyColor: args
             })
         } catch {}
     },
-    cyclops: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return cyclops(player)
-        return cyclops(victim)
+    cyclops: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            cyclops(victim)
+        })
     },
-    weed: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return weedify(player)
-        return weedify(victim)
+    weed: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            weedify(victim)
+        })
     },
-    zombie: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return zombie(player)
-        return zombie(victim)
+    zombie: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            zombie(victim)
+        })
     },
-    basil: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return basil(player)
-        return basil(victim)
+    basil: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            basil(victim)
+        })
     },
-    creeper: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return creeper(player)
-        return creeper(victim)
+    creeper: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            creeper(victim)
+        })
     },
-    snowman: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return snowman(player)
-        return snowman(victim)
+    snowman: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            snowman(victim)
+        })
     },
-    jail: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return
-        if (jailBricks[victim.userId])
-            return player.message(V2(`${victim.username} is already jailed!`))
-        player.message(V2(`You jailed ${victim.username}.`))
-        return jail(victim)
+    jail: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            if (jailBricks[ victim.userId ]) return 
+            jail( victim )
+            caller.message(V2( `You jailed ${victim.username}.` ))
+        })
     },
-    free: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return
-        if (!jailBricks[victim.userId])
-            return player.message(V2(`${victim.username} is already freed!`))
-        player.message(V2(`You freed ${victim.username}.`))
-        return free(victim)
+    free: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            if (!jailBricks[ victim.userId ]) return
+            free( victim )
+            caller.message(V2( `You freed ${victim.username}.` ))
+        })
     },
-    [["broadcast","b"]]: (player,args) => {
-        return Game.topPrintAll(`[#ff0000]${player.username}: [#ffffff]${args}`, 5)
+    [["broadcast","b"]]: (caller, args) => {
+        Game.topPrintAll(`[#ff0000]${caller.username}: [#ffffff]${args}`, 5)
     },
-    hat: (player,args) => {
-        const message = args.split(" ")
-        const victim = findPlayer(message[0])
-        if (!victim) {
-            if (isNaN(Number(args)))
-                return
-            return new Outfit(player)
-                .hat1(Number(args))
-                .set()
-        }
-        if (isNaN(Number(message[1])))
-            return
-        return new Outfit(victim)
-            .hat1(Number(message[1]))
+    hat: (caller, args) => {
+        let match = parseCommand(caller, args)
+
+        if (!match) return
+
+        let user = match[0]
+        let hatId = Number(match[1])
+
+        if (!hatId) return
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            new Outfit(victim)
+            .hat1(hatId)
             .set()
+        })
     },
-    reset: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return reset(player)
-        return reset(victim)
+    reset: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            reset(victim) 
+        })
     },
-    tool: (player,args) => {
-        const message = args.split(" ")
-        const victim = findPlayer(message[0])
-        if (!victim) {
-            if (isNaN(Number(args)))
-                return
-            const newTool = new Tool("Tool")
-            newTool.model = Number(args)
-            return player.equipTool(newTool)
-        }
-        if (isNaN(Number(message[1])))
-            return
-        const newTool = new Tool("Tool")
-        newTool.model = Number(message[1])
-        return victim.equipTool(newTool)
+    tool: (caller, args) => {
+        let match = parseCommand(caller, args)
+
+        if (!match) return
+
+        let user = match[0]
+        let toolId = Number(match[1])
+
+        if (!toolId) return
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            let tool = new Tool("Tool")
+            tool.model = toolId
+            victim.equipTool(tool)
+        })
     },
-    wand: (player,args) => {
-        const victim = findPlayer(args)
-        if (!victim)
-            return newWand(player)
-        return newWand(victim)
+    wand: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            newWand(victim)
+        })
     },
-    greset: () => {
+    [["greset","gr"]]: () => {
         Game.setEnvironment({
             ambient: "0",
             skyColor: "#71b1e6"
+        })
+    },
+    team: (caller, args) => {
+        let match = args.match(regexMatch)
+
+        if (!match) return
+
+        let user = match[1] && match[1].trim()
+        let name = match[2]
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            let team = new Team(name) // random colors
+            victim.setTeam( team )
+        })
+
+    },
+    [["av","avatar"]]: (caller, args) => {
+        let match = parseCommand(caller, args)
+
+        if (!match) return
+
+        let user = match[0]
+        let target = match[1]
+
+        getPlayersFromCommand(caller, user).forEach(async victim => {
+            if (isNaN(Number( target ))) {
+                let userTarget = getPlayersFromCommand(caller, target)[0]
+                await victim.setAvatar( userTarget.userId )
+            } else {
+                await victim.setAvatar( Number( target ) )
+            }
+        })
+    },
+    score: (caller, args) => {
+        let match = parseCommand(caller, args)
+
+        if (!match) return
+
+        let user = match[0]
+        let amount = match[1]
+
+        if (isNaN( amount )) return
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            victim.setScore( amount )
+        })
+
+    },
+    smite: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            smite( victim )
+        })
+    },
+    [["code","eval","exec"]]: (caller,args) => {
+        try {
+            eval(args)
+            caller.message(`[#00ff00][Success]: [#ffffff]Code was successfully executed!`)
+        } catch(err) {
+            caller.message(`[#ff0000][Error]: [#ffffff]${err}`)
+        }
+    },
+    shutdown: () => {
+        Game.shutdown()
+    },
+    heal: (caller, args) => {
+        let match = parseCommand(caller,args)
+
+        if (!match) return
+
+        let user = match[0]
+        let amount = match[1]
+
+        if (isNaN(amount)) return
+
+        getPlayersFromCommand(caller,user).forEach(victim => {
+            heal(victim, amount)
+        })
+    },
+    damage: (caller, args) => {
+        let match = parseCommand(caller,args)
+
+        if (!match) return
+
+        let user = match[0]
+        let amount = match[1]
+
+        if (isNaN(amount)) return
+
+        getPlayersFromCommand(caller,user).forEach(victim => {
+            damage(victim, amount)
+        })
+    },
+    loopkill: (caller,args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            loopkill(victim)
+        })
+    },
+    btools: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            btools(victim)
+        })
+    },
+    admins: (caller, _) => {
+        let currentAdmins = []
+        for (let ids of admins) {
+            let admin = Game.players.find(v => v.userId === ids)
+            if (!admin) continue
+            currentAdmins.push(` ${admin.username}`)
+        }
+        caller.message(`[#ff0000][Admins]:[#ffffff]${String(currentAdmins)}`)
+    },
+    speech: (caller, args) => {
+        let match = args.match(regexMatch)
+
+        if (!match) return
+
+        let user = match[1] && match[1].trim()
+        let reason = match[2]
+
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            victim.setSpeech(reason)
+        })
+    },
+    respawn: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            victim.respawn()
         })
     }
 }
