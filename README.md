@@ -25,8 +25,7 @@ Command instructions:
 - :admins -> returns all other admins in the game
 - :me -> returns yourself
 
-List of commands:
-
+## Commands
 - /kill player: kills the player
 - /kick player ?message: kicks the player with the message provided.
 - /mute player: mutes the player.
