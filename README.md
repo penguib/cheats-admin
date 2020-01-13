@@ -2,6 +2,8 @@
 
 ## *Not finished yet*
 
+#### Thanks to Dragonian for improving the commands
+
 This is an admin script which will only work with Node-Hill.
 
 How to use:
@@ -27,10 +29,12 @@ List of commands:
 
 - /kill player: kills the player
 - /kick player ?message: kicks the player with the message provided.
-- /mute player: mutes the player. */mute is a toggable command*
+- /mute player: mutes the player.
+    -  */mute is a toggable command*
 - /vhcat message: messages all the admins in the server.
 - /ban player: bans the player from the game. *resets when the server is turned off*
-- /admin player: gives the player admin. */admin is a toggable command*
+- /admin player: gives the player admin.
+    -  */admin is a toggable command*
 - /tp player victim|x,y,z: teleports you to a player or the coordinates in x,y,z fashion.
     - `/tp :me :random`
     - `/tp :random 0,0,0`
@@ -64,8 +68,14 @@ List of commands:
 - /score player amount: sets the player's score to the amount
 - /heal player amount: heals the player by amount
 - /damage player amount: damages the player by amount
-- /loopkill player: */loopkill is a toggable command*. Loop kills the player
+- /loopkill player: Loop kills the player
+    -  */loopkill is a toggable command*. 
 - /btools player: gives the player btools
 - /admins: lists the admins in the game
 - /speech player text: sets the player's speech as text
 - /respawn player: respawns the player
+- /team player "name": creates a team setting the player to that team
+    - `/team :all "brick-hillians"`
+- /shutdown: shuts down the server
+- /smite player: hits the player with a lightning bolt
+    - *currently broken*
