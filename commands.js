@@ -1,29 +1,29 @@
-const admins = [1,127118]
-const banned = []
-const jailBricks = {}
-const regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/
+const admins = [1,127118],
+      banned = [],
+      jailBricks = {},
+      regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/;
+      teamRegex = /t\:[^\:]+\:/
 
 function isAdmin(player) {
     return admins.includes(player.userId)
 }
 
 function btools(player) {
-    let brickSize = 5
+    let brickSize = 1
 
     let create = new Tool("Create")
     create.on("activated", p => {
+        let rotX = Math.sin(p.rotation.z),
+            rotY = Math.cos(p.position.z);
         let brick = new Brick(new Vector3(
-            p.position.x + brickSize,
-            p.position.y - brickSize,
+            p.position.x + (rotX + (Math.sign(rotX) * 2)),
+            p.position.y + (rotY + (Math.sign(rotY) * 2)),
             0), new Vector3(
                 brickSize,
                 brickSize,
                 brickSize), "#ff0000")
         brick.name = "btools"
-
-        for (let players of Game.players) {
-            players.loadBricks(brick)
-        }
+        Game.newBrick(brick)
     })
     
     let destroy = new Tool("Destroy")
@@ -124,6 +124,35 @@ function getPlayersFromCommand(caller, args) {
             }
             return _admins
         }
+        case ":nonadmins": {
+            let nonAdmins = []
+            for (let players of Game.players) {
+                if (admins.includes(players.userId)) continue
+                nonAdmins.push(players)
+            }
+            return nonAdmins
+        }
+        case String(args.match(teamRegex)): {
+            let match = String(args.match(teamRegex)).toLowerCase()
+
+            let teamName = match.split(":")[1]
+
+            if (!world.teams.find(n => n.name.toLowerCase().indexOf(teamName) === 0) || !world.teams.length) {
+                caller.message(V2("Team was not found."))
+                return []
+            }
+                
+            let members = []
+
+            for (let players of Game.players) {
+                if (!players.team) continue
+                if (players.team.name.toLowerCase().indexOf(teamName) === 0) {
+                    members.push(players)
+                }
+            }
+
+            return members
+        }
         default: {
             args = args.toLowerCase()
             for (let player of Game.players) {
@@ -133,6 +162,7 @@ function getPlayersFromCommand(caller, args) {
                 }
             }
         }
+        caller.message(V2("User was not found."))
         return []
     }
 }
@@ -647,10 +677,12 @@ const commands = {
 
         let user = match[1] && match[1].trim()
         let name = match[2]
+        let checkTeam = world.teams.find(n => n.name.toLowerCase() === name.toLowerCase())
+
+        let team = (checkTeam) ? checkTeam : new Team(name) // random colors
 
         getPlayersFromCommand(caller, user).forEach(victim => {
-            let team = new Team(name) // random colors
-            victim.setTeam( team )
+            victim.setTeam(team)
         })
 
     },
@@ -691,12 +723,12 @@ const commands = {
             smite( victim )
         })
     },
-    [["code","eval","exec"]]: (caller,args) => {
+    eval: (caller,args) => {
         try {
             eval(args)
-            caller.message(`[#00ff00][Success]: [#ffffff]Code was successfully executed!`)
+            caller.message(`[#00ff00][Success]: [#ffffff]Code was executed.`)
         } catch(err) {
-            caller.message(`[#ff0000][Error]: [#ffffff]${err}`)
+            caller.message(`[#ff0000][Error]: [#ffffff]${err}.`)
         }
     },
     shutdown: () => {

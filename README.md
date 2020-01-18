@@ -24,6 +24,10 @@ Command instructions:
 - :random -> returns random player in the game
 - :admins -> returns all other admins in the game
 - :me -> returns yourself
+- :nonadmins -> returns everyone who is not an admin
+- t:team name: -> returns everyone on that team
+    - `/kill t:cool people:` would kill everyone on the team `cool people`
+    - You do not need to use the full name of the team, `/kill t:cool:` would still work.
 
 ## Commands
 - /kill player: kills the player
