@@ -82,3 +82,5 @@ Command instructions:
 - /shutdown: shuts down the server
 - /smite player: hits the player with a lightning bolt
     - *currently broken*
+- /eval code: executes the code given.
+    - `/eval Game.topPrintAll("This is code from eval!")`
