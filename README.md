@@ -81,7 +81,12 @@ Command instructions:
     - `/team :all "brick-hillians"`
 - **/shutdown**: shuts down the server
 - **/smite player**: hits the player with a lightning bolt.
-    - *currently broken*
 - **/eval code**: executes the code given.
     - `/eval Game.topPrintAll("This is code from eval!")`
     - `allowEval` needs to be set to true to be able to run this command (set to false by default).
+- **/color player hex**: changes the players chat color.
+    - `/color :me "ff0000"`
+- **/god player**: changes the player's health to a large number.
+- **/carpet player**: gives the player a magic carpet.
+- **/levitate|lev player**: makes the player levitate.
+- **/descend/dec player**: makes the player fall if they are levitating.

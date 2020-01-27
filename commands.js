@@ -1,32 +1,121 @@
-const admins = [1,127118],
-      banned = [],
-      jailBricks = {},
-      regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/;
-      teamRegex = /t\:[^\:]+\:/
+//--------------------------------------------Properties--------------------------------------------\\                           
+
+const admins = [1,127118], // Your id here!
+      banned = [], // Add your foes' ids here!
+      allowEval = false, // Set to true if you want to use /eval *this is an unsafe command*
+      maxScale = 10,
+      minScale = 0.1,
+      maxBrickSize = 5,
+      minBrickSize = 1;
+
+//--------------------------------------------------------------------------------------------------\\
+
+
+const jailBricks = {},
+      regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/,
+      teamRegex = /t\:[^\:]+\:/,
+      hexRegex = /^#[0-9A-F]{6}$/i,
+      angle = -57.7;
+
+
 
 function isAdmin(player) {
     return admins.includes(player.userId)
 }
 
+function levitate(player) {
+    let brick = new Brick(new Vector3(), new Vector3(3, 3, 1))
+    player.lev = false
+    brick.setVisibility(0)
+    player.newBrick(brick)
+
+    player.setSpeed(0)
+    player.setJumpPower(0)
+
+    brick.setInterval(() => {
+        if (player.lev) {
+            player.setSpeed(0)
+            player.setJumpPower(0)
+            return brick.destroy()
+        }
+        rotx = Math.round(player.position.x + 1 * Math.sin(player.rotation.z / angle)),
+        roty = Math.round(player.position.y - 1 * Math.cos(player.rotation.z / angle));
+        brick.setPosition(new Vector3(rotx -= Math.round(brick.scale.x /1.5), roty -= Math.round(brick.scale.x /1.5), player.position.z))
+    }, 10);
+}
+
+function carpet(p) {
+    let carpet = new Tool("Magic carpet"),
+        unequipped = false;
+
+    p.setSpeed(10)
+
+    carpet.equipped(player => {
+        let brick = new Brick(new Vector3(), new Vector3(7, 5, 0.5), "#ff0000")
+        unequipped = false
+        Game.newBrick(brick)
+
+        brick.setInterval(() => {
+            if (unequipped) return brick.destroy()
+
+            rotx = Math.round(player.position.x + 1 * Math.sin(player.rotation.z / angle))
+            roty = Math.round(player.position.y - 1 * Math.cos(player.rotation.z / angle))
+            
+            brick.setPosition(new Vector3(rotx -= Math.round(brick.scale.x /1.5), roty -= Math.round(brick.scale.x /1.5), player.position.z - 0.5))
+        }, 10)
+            
+          
+    })
+
+    carpet.unequipped(() => {
+        unequipped = true
+    })
+
+    p.addTool(carpet)
+}
+
 function btools(player) {
-    let brickSize = 1
+    let brickSize = minBrickSize,
+        unequipped = false,
+        offset = Math.round(brickSize/1.5),
+        offsetPlacement = 7;
 
     let create = new Tool("Create")
-    create.on("activated", p => {
-        let rotX = Math.sin(p.rotation.z),
-            rotY = Math.cos(p.position.z);
+    create.model = 20681
+
+    create.on("activated", async p => {
+        let rotx = Math.round(p.position.x + offsetPlacement * Math.sin(p.rotation.z / angle)),
+            roty = Math.round(p.position.y - offsetPlacement * Math.cos(p.rotation.z / angle));
         let brick = new Brick(new Vector3(
-            p.position.x + (rotX + (Math.sign(rotX) * 2)),
-            p.position.y + (rotY + (Math.sign(rotY) * 2)),
-            0), new Vector3(
-                brickSize,
-                brickSize,
-                brickSize), "#ff0000")
+            rotx -= offset, 
+            roty -= offset, 
+            player.position.z),new Vector3(brickSize, brickSize, brickSize))
         brick.name = "btools"
-        Game.newBrick(brick)
+        await Game.newBrick(brick)
+    })
+
+    create.equipped(player => {
+        let brick = new Brick(new Vector3(), new Vector3(1, 1, 1))
+        unequipped = false
+        brick.setVisibility(0.5)
+        player.newBrick(brick)
+        brick.setInterval(() => {
+            if (unequipped) return brick.destroy()
+
+            rotx = Math.round(player.position.x + offsetPlacement * Math.sin(player.rotation.z / angle)),
+            roty = Math.round(player.position.y - offsetPlacement * Math.cos(player.rotation.z / angle));
+            brick.setScale(new Vector3(brickSize, brickSize, brickSize))
+            brick.setPosition(new Vector3(rotx -= offset, roty -= offset, player.position.z))            
+        }, 10);
+    })
+
+    create.unequipped(() => {
+        unequipped = true
     })
     
     let destroy = new Tool("Destroy")
+    destroy.model = 6928
+
     destroy.on("activated", p => {
         for (let bricks of world.bricks) {
             if (Game.pointDistance3D(p.position, bricks.position) <= 10 && bricks.name === "btools") {
@@ -36,9 +125,11 @@ function btools(player) {
     })
 
     let sizeInc = new Tool("Size+")
+    sizeInc.model = 25568
+
     sizeInc.on("activated", p => {
-        if (brickSize >= 10) {
-            brickSize = 10
+        if (brickSize >= maxBrickSize) {
+            brickSize = maxBrickSize
             return p.message(`[#00ff00][Size]: [#ffffff]You increased the brick size to ${brickSize}.`)
         }
         brickSize++
@@ -46,9 +137,11 @@ function btools(player) {
     })
 
     let sizeDec = new Tool("Size-")
+    sizeDec.model = 25568
+
     sizeDec.on("activated", p => {
-        if (brickSize <= 1) {
-            brickSize = 1
+        if (brickSize <= minBrickSize) {
+            brickSize = minBrickSize
             return p.message(`[#ff0000][Size]: [#ffffff]You decreased the brick size to ${brickSize}.`)
         }
             brickSize--
@@ -162,7 +255,7 @@ function getPlayersFromCommand(caller, args) {
                 }
             }
         }
-        caller.message(V2("User was not found."))
+        caller.message(V2("User or value is not valid."))
         return []
     }
 }
@@ -188,12 +281,15 @@ function freeze(caller, victim) {
 }
 
 function newBalloon(player) {
+    
     const balloon = new Tool("balloon")
     balloon.model = 84038
     balloon.equipped(p => {
+        if (jailBricks[p.userId] || p.frozen) return
         p.setJumpPower(12)
     })
     balloon.unequipped(p => {
+        if (jailBricks[p.userId] || p.frozen) return
         p.setJumpPower(5)
     })
     player.equipTool(balloon)
@@ -329,18 +425,19 @@ async function smite(player) {
         player.position.y - endOffset,
         0
     ), new Vector3(1, 1, 1000), "#e3f542")
-
-    lightning.setCollision( false )
+        lightning.name = "lightning"
 
     await player.setSpeed(0)
     player.setHealth(player.health - 50)
+
     Game.newBrick(lightning)
 
-    await sleep(500)
-
+    await sleep(300)
     lightning.destroy()
     player.setSpeed(speed)
 }
+
+
 
 async function jail(player) {
     const middleOffset = 0.2
@@ -387,8 +484,17 @@ function free(player) {
 
 Game.on("playerJoin", player => {
     player.on("initialSpawn", () => {
+
+        player.message(V2("This server uses Cheats' V2 Commands."))
+
+        player.on("died", () => {
+            if (jailBricks[player.userId]) free(player)
+        })
+
         player.frozen = false
         player.loopKill = false
+        player.hex = null
+        player.lev = false
 
         if (banned.includes(player.userId)) 
             return player.kick("You are banned from this server!")
@@ -401,6 +507,13 @@ Game.on("playerLeave", player => {
     if (jailBricks[player.userId]) {
         return free(player)
     }
+})
+
+Game.on("chat", (player, message) => {
+    if (!player.hex)
+        return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 ` + message)
+    
+    Game.messageAll(`[#ffde0a]${player.username}\\c1:[${player.hex}] ` + message)
 })
 
 const commands = {
@@ -463,22 +576,25 @@ const commands = {
         })
     },
     tp: (caller, args) => {
-        let match = args.match(regexMatch)
+        let match = parseCommand(caller, args)
 
         if (!match) return
 
-        let user = match[1] && match[1].trim()
-        let coords = match[2].split(",")
+        let user = match[0] && match[0].trim()
+        let coords = match[1].split(",")
 
         getPlayersFromCommand(caller, user).forEach(victim => {
-            let target = getPlayersFromCommand(caller, coords)[0]
-            if (!target) {
+            let target = (coords.length === 3 && coords[2]) ? coords : getPlayersFromCommand(caller, String(coords))[0]
+            if (Array.isArray(target)) {
+                if (target.length < 3) return
+
                 victim.setPosition(new Vector3(
                     Number(coords[0]),
                     Number(coords[1]),
                     Number(coords[2])
                 ))
             } else {
+                if (!target) return
                 victim.setPosition( target.position )
             }
         })
@@ -517,8 +633,12 @@ const commands = {
 
         if (scale.length === 2 || scale.length > 3) return
 
-        for (let num of scale) {
-            if (isNaN( num )) return
+        for (let num in scale) {
+            if (isNaN( scale[num] )) return
+            if (scale[num] >= maxScale)
+                scale[num] = maxScale
+            if (scale[num] <= minScale)
+                scale[num] = minScale
         }
 
         let parsedScale = (scale.length === 1) ? new Vector3(
@@ -547,12 +667,13 @@ const commands = {
             freeze(caller, victim)
         })
     },
-    thaw: (caller, args) => {
+    [["thaw","unfreeze"]]: (caller, args) => {
         getPlayersFromCommand(caller, args).forEach(async victim => { // thaw as function?
             if (!victim.frozen) return
             await victim.setAvatar(victim.userId)
             victim.setSpeed(4)
             victim.setJumpPower(5)
+            victim.frozen = false
             victim.message(V2( `You were thawed by ${caller.username}.` ))
         })
     },
@@ -612,7 +733,7 @@ const commands = {
             caller.message(V2( `You jailed ${victim.username}.` ))
         })
     },
-    free: (caller, args) => {
+    [["free","unjail"]]: (caller, args) => {
         getPlayersFromCommand(caller, args).forEach(victim => {
             if (!jailBricks[ victim.userId ]) return
             free( victim )
@@ -664,7 +785,20 @@ const commands = {
             newWand(victim)
         })
     },
-    [["greset","gr"]]: () => {
+    [["greset","gr"]]: async (caller) => {
+
+        let bricksMatched = []
+        for (let bricks of world.bricks) {
+            if (bricks.name === "btools") 
+                bricksMatched.push(bricks)
+        }
+
+        caller.message(V2(`Cleared ${bricksMatched.length} bricks.`))
+
+        for (let bricks of bricksMatched) {
+            bricks.destroy()
+        }
+
         Game.setEnvironment({
             ambient: "0",
             skyColor: "#71b1e6"
@@ -721,9 +855,12 @@ const commands = {
     smite: (caller, args) => {
         getPlayersFromCommand(caller, args).forEach(victim => {
             smite( victim )
+            victim.message(V2(`You were smited by the gods above.`))
         })
     },
     eval: (caller,args) => {
+        if (!allowEval) return
+
         try {
             eval(args)
             caller.message(`[#00ff00][Success]: [#ffffff]Code was executed.`)
@@ -772,7 +909,7 @@ const commands = {
             btools(victim)
         })
     },
-    admins: (caller, _) => {
+    admins: (caller) => {
         let currentAdmins = []
         for (let ids of admins) {
             let admin = Game.players.find(v => v.userId === ids)
@@ -798,8 +935,49 @@ const commands = {
         getPlayersFromCommand(caller, args).forEach(victim => {
             victim.respawn()
         })
+    },
+    color: (caller, args) => {
+        let match = args.match(regexMatch)
+
+        if (!match) return
+
+        let user = match[1] && match[1].trim()
+        let hex = match[2]
+
+        if (!hex) return
+
+        let check = (hex.split("")[0] === "#") ? hex : "#" + hex
+
+        if (!hexRegex.test(check)) return caller.message(V2("Not a valid hex color (aabbcc)."))
+
+        getPlayersFromCommand(caller, user).forEach(victim => {
+            victim.hex = check
+            victim.message(`[#ff0000][V2]: [${check}]Your text color now looks like this.`)
+        })
+    },
+    god: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            victim.setHealth(Number.MAX_SAFE_INTEGER)
+            victim.message(V2("You now have the health of the gods."))
+        })
+    },
+    carpet: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            carpet(victim)
+        })
+    },
+    [["levitate","lev"]]: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            levitate(victim)
+        })
+    },
+    [["descend", "dec"]]: (caller, args) => {
+        getPlayersFromCommand(caller, args).forEach(victim => {
+            victim.lev = true
+        })
     }
 }
+
 
 Game.setMaxListeners(100)
 
