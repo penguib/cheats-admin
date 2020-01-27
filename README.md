@@ -2,8 +2,6 @@
 
 ## *Not finished yet*
 
-#### Thanks to Dragonian for improving the commands
-
 This is an admin script which will only work with Node-Hill.
 
 How to use:
@@ -90,3 +88,10 @@ Command instructions:
 - **/carpet player**: gives the player a magic carpet.
 - **/levitate|lev player**: makes the player levitate.
 - **/descend/dec player**: makes the player fall if they are levitating.
+
+# Contributions
+- SmartLion
+    - Drastically improving btools
+    - Helping with angles
+- Dragonian
+    - Improving way of getting players
