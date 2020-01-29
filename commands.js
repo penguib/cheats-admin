@@ -44,9 +44,6 @@ function isAdmin(player, args, next) {
     next(player, args)
 }
 
-Game.on("chat", (player, message) => {
-    Game.messageAll(player.username + " screams loudly: " + message)
- })
 
 function levitate(player) {
     let brick = new Brick(new Vector3(), new Vector3(3, 3, 1))
