@@ -1,13 +1,11 @@
 # Cheats' V2 Commands
 
-## *Not finished yet*
-
 This is an admin script which will only work with Node-Hill.
 
 How to use:
 - Download the `commands.js` file and place it in your `user_scripts` folder that is in your Node-Hill game folder.
 - Put your user id in the `admins` array:
-    - `const admins = [1,2002,3843]`
+    - `const admins = [1, 127118]`
 - Now host your game and execute commands.
 
 
@@ -15,14 +13,25 @@ Command instructions:
 - You do not need to use full player's usernames
 - Commands are *not* case sensitive
 
+## Config
+- admins     -> list of all allowed admins by userId.
+- banned     -> list of all banned players from your game by userId.
+- allowEval  -> when enabled the `/eval` command is allowed.
+- maxScale   -> the maximum scale of a player via `/scale`.
+minScale     -> the minimum scale of a player via `/scale`.
+maxBrickSize -> the maximum size of a brick via `/btools`.
+minBrickSize -> the minimum size of a brick via `/btools`.
+audit        -> logs every command and information of each command emitted in the console.
+immunity     -> immunes the original admins from `/ban, /kick, and /admin`.
+safeCommands -> disables `/ban, /kick, /loopkill, /shutdown` except for the original admins.
 
-## Special ways of getting players
-- :all -> returns every player in the game
-- :others -> returns every player other than you in the game
-- :random -> returns random player in the game
-- :admins -> returns all other admins in the game
-- :me -> returns yourself
-- :nonadmins -> returns everyone who is not an admin
+## Getting players
+- :all         -> returns every player in the game
+- :others      -> returns every player other than you in the game
+- :random      -> returns random player in the game
+- :admins      -> returns all other admins in the game
+- :me          -> returns yourself
+- :nonadmins   -> returns everyone who is not an admin
 - t:team name: -> returns everyone on that team
     - `/kill t:cool people:` would kill everyone on the team `cool people`
     - You do not need to use the full name of the team, `/kill t:cool:` would still work.
@@ -89,7 +98,7 @@ Command instructions:
 - **/levitate|lev player**: makes the player levitate.
 - **/descend/dec player**: makes the player fall if they are levitating.
 
-# Contributions
+## Contributions
 - SmartLion
     - Drastically improving btools
     - Helping with angles

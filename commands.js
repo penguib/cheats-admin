@@ -1,12 +1,15 @@
 //--------------------------------------------Properties--------------------------------------------\\                           
 
 const admins = [1,127118], // Your id here!
-      banned = [], // Add your foes' ids here!
-      allowEval = false, // Set to true if you want to use /eval *this is an unsafe command*
+      banned = [],
+      allowEval = false,
       maxScale = 10,
       minScale = 0.1,
       maxBrickSize = 5,
-      minBrickSize = 1;
+      minBrickSize = 1,
+      audit = true,
+      immunity = true,
+      safeCommands = true;
 
 //--------------------------------------------------------------------------------------------------\\
 
@@ -15,13 +18,35 @@ const jailBricks = {},
       regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/,
       teamRegex = /t\:[^\:]+\:/,
       hexRegex = /^#[0-9A-F]{6}$/i,
-      angle = -57.7;
+      angle = -57.7,
+      _admins = [...admins];
 
+let auditTarget = null;
 
-
-function isAdmin(player) {
-    return admins.includes(player.userId)
+function _safeCommands(caller) {
+    if (safeCommands) {
+        if (!_admins.includes(caller.userId)) return false
+        return true
+    }
+    return true
 }
+
+function checkOwner(player) {
+    if (immunity) {
+        if (_admins.includes(player.userId)) return true
+        return false
+    }
+    return false
+}
+
+function isAdmin(player, args, next) {
+    if (!admins.includes(player.userId)) return
+    next(player, args)
+}
+
+Game.on("chat", (player, message) => {
+    Game.messageAll(player.username + " screams loudly: " + message)
+ })
 
 function levitate(player) {
     let brick = new Brick(new Vector3(), new Vector3(3, 3, 1))
@@ -61,7 +86,7 @@ function carpet(p) {
             rotx = Math.round(player.position.x + 1 * Math.sin(player.rotation.z / angle))
             roty = Math.round(player.position.y - 1 * Math.cos(player.rotation.z / angle))
             
-            brick.setPosition(new Vector3(rotx -= Math.round(brick.scale.x /1.5), roty -= Math.round(brick.scale.x /1.5), player.position.z - 0.5))
+            brick.setPosition(new Vector3(rotx -= Math.round(brick.scale.x /1.5), (roty -= Math.round(brick.scale.x /1.5)) + 2.5, player.position.z - 0.5))
         }, 10)
             
           
@@ -191,9 +216,11 @@ function parseCommand(caller, args) {
 function getPlayersFromCommand(caller, args) {
     switch (args) {
         case ":me": {
+            auditTarget = ":me"
             return [ caller ]
         }
         case ":all": {
+            auditTarget = ":all"
             return Game.players
         }
         case ":others": {
@@ -202,11 +229,16 @@ function getPlayersFromCommand(caller, args) {
                 if (player !== caller)
                     others.push(player)
             }
+
+            auditTarget = ":others"
             return others
         }
         case ":random": {
             let randomIndex = Math.floor( Math.random() * Game.players.length )
-            return [ Game.players[ randomIndex ] ]
+            let victim = Game.players[ randomIndex ]
+
+            auditTarget = victim.username
+            return [ victim ]
         }
         case ":admins": {
             let _admins = []
@@ -215,6 +247,7 @@ function getPlayersFromCommand(caller, args) {
                 if (!user) continue
                 _admins.push(user)
             }
+            auditTarget = ":admins"
             return _admins
         }
         case ":nonadmins": {
@@ -223,6 +256,8 @@ function getPlayersFromCommand(caller, args) {
                 if (admins.includes(players.userId)) continue
                 nonAdmins.push(players)
             }
+
+            auditTarget = ":nonadmins"
             return nonAdmins
         }
         case String(args.match(teamRegex)): {
@@ -244,6 +279,7 @@ function getPlayersFromCommand(caller, args) {
                 }
             }
 
+            auditTarget = "Team: " + teamName
             return members
         }
         default: {
@@ -251,6 +287,7 @@ function getPlayersFromCommand(caller, args) {
             for (let player of Game.players) {
                 if (player.username.toLowerCase().indexOf(args) === 0) {
                     const victim = Game.players.find(v => v.username === player.username)
+                    auditTarget = victim.username
                     return [ victim ]
                 }
             }
@@ -264,9 +301,19 @@ function V2(message) {
     return `[#ff0000][V2]: [#ffffff]${message}`
 }
 
+function cmdAudit(caller, cmd) {
+    if (!audit) return
+
+    let revisedStr = String(cmd).replace(",","/")
+    let data = [{ Username: caller.username, UserId: caller.userId, Command: revisedStr, Target: auditTarget }]
+
+    console.table(data)
+}
+
 function loadCommands(cmd,cb) {
     return Game.commands(cmd, isAdmin, (caller, args) => {
         cb(caller, args)
+        cmdAudit(caller, cmd)
     })
 }
 
@@ -510,8 +557,10 @@ Game.on("playerLeave", player => {
 })
 
 Game.on("chat", (player, message) => {
-    if (!player.hex)
+    if (!player.hex && !player.admin)
         return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 ` + message)
+    if (!player.hex && player.admin)
+        return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 [#ffde0a]` + message)
     
     Game.messageAll(`[#ffde0a]${player.username}\\c1:[${player.hex}] ` + message)
 })
@@ -523,14 +572,17 @@ const commands = {
         })
     },
     kick: (caller, args) => {
+        if (!_safeCommands(caller)) return
+
         let match = args.match(regexMatch)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[1] && match[1].trim()
         let reason = match[2]
 
         getPlayersFromCommand(caller, user).forEach((victim) => {
+            if (checkOwner(victim)) return
             victim.kick(reason)
         })
     },
@@ -549,21 +601,37 @@ const commands = {
         }
     },
     ban: (caller, args) => {
+        if (!_safeCommands(caller)) return
+
         let match = args.match(regexMatch)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[1] && match[1].trim()
         let reason = (match[2]) ? match[2] : "You are banned from this server."
 
         getPlayersFromCommand(caller, user).forEach(victim => {
+            if (checkOwner(victim)) return
             banned.push(victim.userId)
             caller.message( V2( `You banned [#ff0000]${victim.username}[#ffffff].` ) )
             victim.kick(reason)
         })
     },
+    unban: (_, args) => {
+        let id = Number(args)
+
+        if (isNaN(id)) return
+        if (!banned.includes(id)) return V2("This player is not banned.")
+
+        let index = banned.indexOf(id)
+
+        if (index > -1) 
+            index.splice(index, 1) 
+
+    },
     admin: (caller, args) => {
         getPlayersFromCommand(caller, args).forEach(victim => {
+            if (checkOwner(victim)) return
             if (admins.includes( victim.userId )) {
                 victim.message( V2( `Your admin was taken away by [#ff0000]${caller.username}[#ffffff].` ) )
                 caller.message( V2( `You took away [#ff0000]${victim.username}[#ffffff]'s admin.` ) )
@@ -578,7 +646,7 @@ const commands = {
     tp: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0] && match[0].trim()
         let coords = match[1].split(",")
@@ -602,7 +670,7 @@ const commands = {
     speed: (caller, args) => {
         let match = parseCommand(caller, args)
         
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let speed = Number(match[1])
@@ -626,7 +694,7 @@ const commands = {
     [["size","scale"]]: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let scale = match[1].split(",")
@@ -746,7 +814,7 @@ const commands = {
     hat: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let hatId = Number(match[1])
@@ -767,7 +835,7 @@ const commands = {
     tool: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let toolId = Number(match[1])
@@ -823,7 +891,7 @@ const commands = {
     [["av","avatar"]]: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let target = match[1]
@@ -840,7 +908,7 @@ const commands = {
     score: (caller, args) => {
         let match = parseCommand(caller, args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let amount = match[1]
@@ -868,13 +936,15 @@ const commands = {
             caller.message(`[#ff0000][Error]: [#ffffff]${err}.`)
         }
     },
-    shutdown: () => {
+    shutdown: (caller) => {
+        if (!_safeCommands(caller)) return
+
         Game.shutdown()
     },
     heal: (caller, args) => {
         let match = parseCommand(caller,args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let amount = match[1]
@@ -888,7 +958,7 @@ const commands = {
     damage: (caller, args) => {
         let match = parseCommand(caller,args)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[0]
         let amount = match[1]
@@ -900,6 +970,8 @@ const commands = {
         })
     },
     loopkill: (caller,args) => {
+        if (!_safeCommands(caller)) return
+
         getPlayersFromCommand(caller, args).forEach(victim => {
             loopkill(victim)
         })
@@ -921,7 +993,7 @@ const commands = {
     speech: (caller, args) => {
         let match = args.match(regexMatch)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[1] && match[1].trim()
         let reason = match[2]
@@ -939,7 +1011,7 @@ const commands = {
     color: (caller, args) => {
         let match = args.match(regexMatch)
 
-        if (!match) return
+        if (!match || !match[1]) return
 
         let user = match[1] && match[1].trim()
         let hex = match[2]
