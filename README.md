@@ -14,25 +14,25 @@ Command instructions:
 - Commands are *not* case sensitive
 
 ## Config
-- admins     -> list of all allowed admins by userId.
-- banned     -> list of all banned players from your game by userId.
-- allowEval  -> when enabled the `/eval` command is allowed.
-- maxScale   -> the maximum scale of a player via `/scale`.
-minScale     -> the minimum scale of a player via `/scale`.
-maxBrickSize -> the maximum size of a brick via `/btools`.
-minBrickSize -> the minimum size of a brick via `/btools`.
-audit        -> logs every command and information of each command emitted in the console.
-immunity     -> immunes the original admins from `/ban, /kick, and /admin`.
-safeCommands -> disables `/ban, /kick, /loopkill, /shutdown` except for the original admins.
+- **admins**       -> list of all allowed admins by userId.
+- **banned**       -> list of all banned players from your game by userId.
+- **allowEval**    -> when enabled the `/eval` command is allowed.
+- **maxScale**     -> the maximum scale of a player via `/scale`.
+- **minScale**     -> the minimum scale of a player via `/scale`.
+- **maxBrickSize** -> the maximum size of a brick via `/btools`.
+- **minBrickSize** -> the minimum size of a brick via `/btools`.
+- **audit**        -> logs every command and information of each command emitted in the console.
+- **immunity**     -> immunes the original admins from `/ban, /kick, and /admin`.
+- **safeCommands** -> disables `/ban, /kick, /loopkill, /shutdown` except for the original admins.
 
 ## Getting players
-- :all         -> returns every player in the game
-- :others      -> returns every player other than you in the game
-- :random      -> returns random player in the game
-- :admins      -> returns all other admins in the game
-- :me          -> returns yourself
-- :nonadmins   -> returns everyone who is not an admin
-- t:team name: -> returns everyone on that team
+- **:all**         -> returns every player in the game
+- **:others**      -> returns every player other than you in the game
+- **:random**      -> returns random player in the game
+- **:admins**      -> returns all other admins in the game
+- **:me**          -> returns yourself
+- **:nonadmins**   -> returns everyone who is not an admin
+- **t:team name:** -> returns everyone on that team
     - `/kill t:cool people:` would kill everyone on the team `cool people`
     - You do not need to use the full name of the team, `/kill t:cool:` would still work.
 
@@ -99,8 +99,8 @@ safeCommands -> disables `/ban, /kick, /loopkill, /shutdown` except for the orig
 - **/descend/dec player**: makes the player fall if they are levitating.
 
 ## Contributions
-- SmartLion
+- **SmartLion**
     - Drastically improving btools
     - Helping with angles
-- Dragonian
+- **Dragonian**
     - Improving way of getting players
