@@ -1,15 +1,15 @@
 //--------------------------------------------Properties--------------------------------------------\\                           
 
 const admins = [1,127118], // Your id here!
-      banned = [],
-      allowEval = false,
+      banned = [], // Add your foes' ids here!
+      allowEval = false, // Set to true if you want to use /eval *this is an unsafe command*
       maxScale = 10,
       minScale = 0.1,
       maxBrickSize = 5,
       minBrickSize = 1,
       audit = true,
-      immunity = true,
-      safeCommands = true;
+      immunity = true, // immunes the owner/original admins from ban, kick, and admin
+      safeCommands = true; // disables shutdown, ban, kick, loopkill, unless you are the owner
 
 //--------------------------------------------------------------------------------------------------\\
 
@@ -19,7 +19,9 @@ const jailBricks = {},
       teamRegex = /t\:[^\:]+\:/,
       hexRegex = /^#[0-9A-F]{6}$/i,
       angle = -57.7,
-      _admins = [...admins];
+      _admins = [...admins],
+      phin = require("phin").defaults({parse: "json"}),
+      itemAPI = "https://api.brick-hill.com/v1/shop/item?id=";
 
 let auditTarget = null;
 
@@ -39,11 +41,29 @@ function checkOwner(player) {
     return false
 }
 
+async function checkTool(caller, id) {
+
+    let data
+
+    try {
+        data = await phin(itemAPI + id)
+      } catch (err) {
+        return caller.message(V2("Error fetching item."))
+      }
+
+    if (data.body.type_id !== 3)
+        return caller.message(V2("Item must be a tool."))
+    
+    return {
+        name: data.body.name,
+        id: data.body.id
+    }
+}
+
 function isAdmin(player, args, next) {
     if (!admins.includes(player.userId)) return
     next(player, args)
 }
-
 
 function levitate(player) {
     let brick = new Brick(new Vector3(), new Vector3(3, 3, 1))
@@ -100,7 +120,8 @@ function btools(player) {
     let brickSize = minBrickSize,
         unequipped = false,
         offset = Math.round(brickSize/1.5),
-        offsetPlacement = 7;
+        offsetPlacement = 7,
+        brickColor = "#ff0000";
 
     let create = new Tool("Create")
     create.model = 20681
@@ -111,7 +132,7 @@ function btools(player) {
         let brick = new Brick(new Vector3(
             rotx -= offset, 
             roty -= offset, 
-            player.position.z),new Vector3(brickSize, brickSize, brickSize))
+            player.position.z),new Vector3(brickSize, brickSize, brickSize), brickColor)
         brick.name = "btools"
         await Game.newBrick(brick)
     })
@@ -127,7 +148,8 @@ function btools(player) {
             rotx = Math.round(player.position.x + offsetPlacement * Math.sin(player.rotation.z / angle)),
             roty = Math.round(player.position.y - offsetPlacement * Math.cos(player.rotation.z / angle));
             brick.setScale(new Vector3(brickSize, brickSize, brickSize))
-            brick.setPosition(new Vector3(rotx -= offset, roty -= offset, player.position.z))            
+            brick.setPosition(new Vector3(rotx -= offset, roty -= offset, player.position.z))
+            brick.setColor(brickColor)          
         }, 10);
     })
 
@@ -169,11 +191,19 @@ function btools(player) {
             brickSize--
             p.message(`[#ff0000][Size]: [#ffffff]You decreased the brick size to ${brickSize}.`)
     })
+
+    let color = new Tool("Color")
+
+    color.on("activated", p => {
+        brickColor = '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+        p.message(`[#ff0000][V2]: [${brickColor}]Your brick color now looks like this.`)
+    })
     
     player.addTool(create)
     player.addTool(destroy)
     player.addTool(sizeInc)
     player.addTool(sizeDec)
+    player.addTool(color)
 }
 
 function heal(player,amt) {
@@ -305,6 +335,8 @@ function cmdAudit(caller, cmd) {
     let data = [{ Username: caller.username, UserId: caller.userId, Command: revisedStr, Target: auditTarget }]
 
     console.table(data)
+
+    auditTarget = null
 }
 
 function loadCommands(cmd,cb) {
@@ -829,7 +861,7 @@ const commands = {
             reset(victim) 
         })
     },
-    tool: (caller, args) => {
+    tool: async (caller, args) => {
         let match = parseCommand(caller, args)
 
         if (!match || !match[1]) return
@@ -839,9 +871,18 @@ const commands = {
 
         if (!toolId) return
 
+        let data;
+
+        try {
+            data = await checkTool(caller, toolId)
+        } catch {}
+
+
+
         getPlayersFromCommand(caller, user).forEach(victim => {
             let tool = new Tool("Tool")
-            tool.model = toolId
+            tool.model = data.id
+            tool.name = data.name
             victim.equipTool(tool)
         })
     },
