@@ -43,6 +43,7 @@ Command instructions:
 - **maxBrickSize** -> the maximum size of a brick via `/btools`.
 - **minBrickSize** -> the minimum size of a brick via `/btools`.
 - **audit**        -> logs every command and information of each command emitted in the console.
+    - If target is `null`, then the target was themselves.
 - **immunity**     -> immunes the original admins from `/ban, /kick, and /admin`.
 - **safeCommands** -> disables `/ban, /kick, /loopkill, /shutdown` except for the original admins.
 
