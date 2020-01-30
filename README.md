@@ -3,11 +3,32 @@
 This is an admin script which will only work with Node-Hill.
 
 How to use:
-- Download the `commands.js` file and place it in your `user_scripts` folder that is in your Node-Hill game folder.
-- Put your user id in the `admins` array:
-    - `const admins = [1, 127118]`
-- Now host your game and execute commands.
+- In your Node-Hill server folder, open `start.js`.
+- add `cheatsAdmin` and the properties you would like to add.
 
+Example:
+
+```js
+const nh = require('./node-hill')
+
+nh.startServer({
+    gameId: 335,
+
+    port: 42480,
+
+    local: true,
+
+    map: './maps/mansion.brk',
+    
+    scripts: './user_scripts',
+
+    cheatsAdmin: {
+        admins: [1, 2760],
+        audit: true,
+        safeCommands: false
+    }
+})
+```
 
 Command instructions:
 - You do not need to use full player's usernames
