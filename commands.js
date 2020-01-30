@@ -1,15 +1,17 @@
+const config = Game.serverSettings.cheatsAdmin
+
 //--------------------------------------------Properties--------------------------------------------\\                           
 
-const admins = [1,127118], // Your id here!
-      banned = [], // Add your foes' ids here!
-      allowEval = false, // Set to true if you want to use /eval *this is an unsafe command*
-      maxScale = 10,
-      minScale = 0.1,
-      maxBrickSize = 5,
-      minBrickSize = 1,
-      audit = true,
-      immunity = true, // immunes the owner/original admins from ban, kick, and admin
-      safeCommands = true; // disables shutdown, ban, kick, loopkill, unless you are the owner
+const admins = config.admins || [], // Your id here!
+      banned = config.banned || [], // Add your foes' ids here!
+      allowEval = config.allowEval || false, // Set to true if you want to use /eval *this is an unsafe command*
+      maxScale = config.maxScale || 0.1,
+      minScale = config.minScale || 10,
+      maxBrickSize = config.maxBrickSize || 5,
+      minBrickSize = config.minBrickSize || 1,
+      audit = config.audit || true,
+      immunity = config.immunity || true, // immunes the owner/original admins from ban, kick, and admin
+      safeCommands = config.safeCommands || true; // disables shutdown, ban, kick, loopkill, unless you are the owner
 
 //--------------------------------------------------------------------------------------------------\\
 
