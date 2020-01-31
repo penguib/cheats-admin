@@ -63,7 +63,10 @@ async function checkTool(caller, id) {
 }
 
 function isAdmin(player, args, next) {
-    if (!admins.includes(player.userId)) return
+    if (player.admin)
+          return  next(player, args)
+    if (!admins.includes(player.userId)) 
+          return
     next(player, args)
 }
 
