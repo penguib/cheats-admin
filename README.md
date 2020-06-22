@@ -1,5 +1,9 @@
 # Cheats' V2 Commands
 
+**Not updated to latest version of Node-Hill**
+
+DM me on Discord or Brick Hill if some commands don't work.
+
 This is an admin script which will only work with Node-Hill.
 
 How to use:
