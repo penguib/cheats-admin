@@ -590,15 +590,6 @@ Game.on("playerLeave", player => {
     }
 })
 
-Game.on("chat", (player, message) => {
-    if (!player.hex && !player.admin)
-        return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 ` + message)
-    if (!player.hex && player.admin)
-        return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 [#ffde0a]` + message)
-    
-    Game.messageAll(`[#ffde0a]${player.username}\\c1:[${player.hex}] ` + message)
-})
-
 const commands = {
     kill: (caller, args) => {
         getPlayersFromCommand(caller, args).forEach((victim) => {
