@@ -20,9 +20,6 @@ const jailBricks = {},
       regexMatch = /([^"]+)(?:\"([^\"]+)\"+)?/,
       teamRegex = /t\:[^\:]+\:/,
       hexRegex = /^#[0-9A-F]{6}$/i,
-      colorcodeRegex = /\\c[0-9]/g,
-      hexcodeRegex = /(\[#[0-9a-fA-F]{6}\])/g,
-      internalcodeRegex = /<color:[0-9A-F]{6}>/g,
       angle = -57.7,
       _admins = [...admins],
       phin = require("phin").defaults({parse: "json"}),
@@ -566,13 +563,6 @@ function free(player) {
     }
 }
 
-function removeTextFormatting(str) {
-    str = str.replace(colorcodeRegex, "")
-    str = str.replace(hexcodeRegex, "")
-    str = str.replace(internalcodeRegex, "")
-    return str
-}
-
 Game.on("playerJoin", player => {
     player.on("initialSpawn", () => {
 
@@ -600,39 +590,7 @@ Game.on("playerLeave", player => {
     }
 })
 
-const rateLimit = new Set();
 Game.on("chat", (player, message) => {
-    if (Game.version.localeCompare("8.3.4", undefined, { numeric: true }) === 1) { // Is the current node-hill version greater than 8.3.4? If it is then filter chat for 8.4.0+ versions.
-        if (message.length > 85)
-        message = message.substring(0, 85) + "..."
-
-        if (player.muted) {
-            message = removeTextFormatting(message)
-            player.message(`\\c2${player.username}: ${message}`)
-            return player.message("You are muted.")
-        }
-
-        if (rateLimit.has(player.userId)) {
-            message = removeTextFormatting(message)
-            player.message(`\\c2${player.username}: ${message}`)
-            return player.message("You're chatting too fast!")
-        }
-
-        rateLimit.add(player.userId);
-        setTimeout(() => rateLimit.delete(player.userId), 2000)
-
-        if (util.filter.isSwear(message)) {
-            message = removeTextFormatting(message)
-            player.message(`\\c2${player.username}: ${message}`)
-            console.log(`[x]: ${player.username}: ${message}`);
-            return player.message("Don't swear! Your message has not been sent.")
-        }
-
-        console.log(`${player.username}: ${message}`);
-        Game.emit("chatted",player,message)
-        player.emit("chatted",message)
-    }
-
     if (!player.hex && !player.admin)
         return Game.messageAll(`[#ffde0a]${player.username}\\c1:\\c0 ` + message)
     if (!player.hex && player.admin)
